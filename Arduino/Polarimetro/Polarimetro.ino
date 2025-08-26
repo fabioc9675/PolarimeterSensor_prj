@@ -2,6 +2,7 @@
 // Captura 64 muestras/vuelta, acumula 8 vueltas (512 muestras) y
 // responde al comando "GET\n" enviando un paquete único con SAMPLE_PERIOD_US y los 512 valores CSV.
 
+// TODO: que se envie la ultima ventana, que vaya llenando el buffer de forma circular, para que se envie la ultima ventana sin importar que se perdieron las anteriores
 // Ajustes
 #define INTERRUPT_PIN 12   // pin del foto-interruptor (ajusta)
 #define ADC_PIN 35         // pin ADC (ajusta)
@@ -77,13 +78,14 @@ void IRAM_ATTR sampling_ISR() {
       // Fin de esta vuelta
       cur_index = 0;
       cur_vuelta++;
-      startMeasuring = false;
-      timerStop(timer);
+      
 
       if (cur_vuelta >= NVU) {
         // Buffer completo: listo para enviar
         cur_vuelta = 0;        // se reinicia el contador de vueltas (no empezará a grabar hasta que sending sea false)
         readyToSend = true;
+        startMeasuring = false;
+        timerStop(timer);
       }
     }
   }
