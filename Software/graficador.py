@@ -1,6 +1,7 @@
 import serial
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 # Configurar puerto
 ser = serial.Serial('COM10', 460800, timeout=1)
@@ -37,6 +38,26 @@ def parsear_trama(trama):
             datos = [float(x) for x in valores.split(",") if x.strip()]
     return sample_period, total, np.array(datos)
 
+
+# ---- Configuración de la gráfica ----
+plt.ion()  # modo interactivo
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+
+linea_signal, = ax1.plot([], [], lw=1.5)
+ax1.set_title("Señal muestreada")
+ax1.set_xlabel("Muestra")
+ax1.set_ylabel("Amplitud")
+
+linea_fft, = ax2.plot([], [], lw=1.5)
+ax2.set_title("Transformada de Fourier (FFT)")
+ax2.set_xlabel("Frecuencia [Hz]")
+ax2.set_ylabel("Magnitud")
+ax2.set_xlim(0, 250)  # limitar eje x para mejor visualización
+
+plt.tight_layout()
+plt.show()
+
+
 try:
     while True:
         # pedir datos al ESP32
@@ -53,27 +74,26 @@ try:
         # frecuencia de muestreo
         fs = 1e6 / sample_period  
 
-        # ---- Graficar ----
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
-
+        # ---- Actualizar gráfica ----
         # Señal
-        ax1.plot(datos)
-        ax1.set_title("Señal muestreada")
-        ax1.set_xlabel("Muestra")
-        ax1.set_ylabel("Amplitud")
+        linea_signal.set_data(np.arange(len(datos)), datos)
+        ax1.relim()
+        ax1.autoscale_view()
 
         # FFT
         N = len(datos)
         freqs = np.fft.rfftfreq(N, d=1/fs)
         fft_vals = np.abs(np.fft.rfft(datos))
 
-        ax2.plot(freqs, fft_vals)
-        ax2.set_title("Transformada de Fourier (FFT)")
-        ax2.set_xlabel("Frecuencia [Hz]")
-        ax2.set_ylabel("Magnitud")
+        linea_fft.set_data(freqs, fft_vals)
+        ax2.relim()
+        ax2.autoscale_view()
 
-        plt.tight_layout()
-        plt.show()
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+
+        # espera 1 segundo entre actualizaciones
+        time.sleep(1)
 
 except KeyboardInterrupt:
     print("Interrupción manual (Ctrl+C).")
